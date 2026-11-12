@@ -168,6 +168,7 @@ def scheduled_job():
                 result = detector.scan_divergence(div_df)
                 sig = str(result.get("signal", "NEUTRAL")).upper()
 
+                print(f"  • [{ticker}] Signal: {sig} | Price Slope: {result.get('price_slope', 0):.5f} | Sent Slope: {result.get('sentiment_slope', 0):.5f}")
                 # --- RATE-LIMITED ALERT DISPATCH ---
                 if sig in ["BULLISH", "BEARISH"]:
                     if LAST_ALERTED_STATE.get(ticker) != sig:
