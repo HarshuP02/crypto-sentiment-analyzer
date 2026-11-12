@@ -2,6 +2,7 @@ import re
 import hashlib
 import threading
 from datetime import datetime, timezone
+from pathlib import Path
 import pandas as pd
 import requests
 import feedparser
@@ -182,6 +183,7 @@ def scheduled_job():
             print(f"  • [Signal/Alert Warning] {ticker}: {e}")
 
     print("🏁 Ingestion and alert cycle finished.")
+    Path("/tmp/worker_heartbeat").touch()
 
 
 def start_background_worker():
