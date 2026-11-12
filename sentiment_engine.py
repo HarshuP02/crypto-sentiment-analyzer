@@ -115,7 +115,7 @@ class HybridSentimentEngine:
 
         # Guarantee unified label vocabulary across all engines
         score_data["label"] = LABEL_MAP.get(
-            str(score_data["label"]).strip().upper(),
+            str(score_data["label"]).strip().lower(),
             "NEUTRAL"
         )
 

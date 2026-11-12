@@ -2,6 +2,7 @@ from legacy_db import init_db
 from ingestion import fetch_all_feeds
 from sentiment import CryptoSentimentEngine
 from market_data import fetch_and_store_crypto_prices
+from legacy_db import init_db, init_price_table, get_unscored_posts, update_sentiment_batch
 
 
 def run_pipeline():
