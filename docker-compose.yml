@@ -1,0 +1,70 @@
+services:
+  # 1. Managed PostgreSQL Database
+  postgres_db:
+    image: postgres:15-alpine
+    container_name: crypto_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: crypto_user
+      POSTGRES_PASSWORD: crypto_password
+      POSTGRES_DB: crypto_intelligence
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U crypto_user -d crypto_intelligence"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # 2. Autonomous Background Collector Daemon
+  background_worker:
+    build: .
+    container_name: crypto_worker
+    restart: unless-stopped
+    command: python scheduler_worker.py
+    environment:
+      - DATABASE_URL=postgresql+psycopg2://crypto_user:crypto_password@postgres_db:5432/crypto_intelligence
+      - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL}
+      - IS_DOCKER=true
+      - HF_HOME=/root/.cache/huggingface
+    volumes:
+      - hf_cache:/root/.cache/huggingface
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    depends_on:
+      postgres_db:
+        condition: service_healthy
+
+  # 3. Streamlit Frontend Dashboard
+  dashboard_ui:
+    build: .
+    container_name: crypto_dashboard
+    restart: unless-stopped
+    command: streamlit run app.py --server.port=8501 --server.address=0.0.0.0
+    ports:
+      - "8501:8501"
+    environment:
+      - DATABASE_URL=postgresql+psycopg2://crypto_user:crypto_password@postgres_db:5432/crypto_intelligence
+      - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL}
+      - RUN_BACKGROUND_WORKER=0
+      - IS_DOCKER=true
+      - HF_HOME=/root/.cache/huggingface
+    volumes:
+      - hf_cache:/root/.cache/huggingface
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    depends_on:
+      postgres_db:
+        condition: service_healthy
+
+volumes:
+  hf_cache:
+  postgres_data:

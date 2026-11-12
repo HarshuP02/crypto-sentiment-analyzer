@@ -1,7 +1,7 @@
+from legacy_db import init_price_table, insert_price_records
 import yfinance as yf
 import pandas as pd
 from datetime import datetime
-from database import init_price_table, insert_price_records
 
 # Mapping ticker symbols to Yahoo Finance pairs
 COIN_TICKER_MAP = {

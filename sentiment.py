@@ -1,23 +1,15 @@
 import re
-import ssl
 import nltk
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
 
-# Fix macOS Python SSL certificate verification for downloading NLTK datasets
-try:
-    _create_unverified_https_context = ssl._create_unverified_context
-except AttributeError:
-    pass
-else:
-    ssl._create_default_https_context = _create_unverified_https_context
 
-# Download VADER lexicon
+# Download VADER lexicon safely
 try:
     nltk.data.find('sentiment/vader_lexicon.zip')
 except LookupError:
     nltk.download('vader_lexicon', quiet=True)
 
-# Custom crypto-specific sentiment weights
+# noinspection SpellCheckingInspection
 CRYPTO_LEXICON_OVERRIDES = {
     "bullish": 3.0,
     "moon": 2.5,
@@ -32,6 +24,7 @@ CRYPTO_LEXICON_OVERRIDES = {
     "dumping": -3.0,
     "rekt": -3.5,
     "rug": -3.5,
+    "rug pull": -4.0,
     "rugpull": -4.0,
     "fud": -2.0,
     "crash": -3.0,
@@ -45,8 +38,9 @@ class CryptoSentimentEngine:
         self.analyzer = SentimentIntensityAnalyzer()
         self.analyzer.lexicon.update(CRYPTO_LEXICON_OVERRIDES)
 
-    def clean_text(self, text: str) -> str:
-        """Removes URLs, markdown formatting, and non-ASCII artifacts."""
+    @staticmethod
+    def clean_text(text: str) -> str:
+        """Removes URLs, mark down formatting, and non-ASCII artifacts."""
         if not text:
             return ""
         text = re.sub(r'http\S+|www\S+|https\S+', '', text, flags=re.MULTILINE)
@@ -54,14 +48,25 @@ class CryptoSentimentEngine:
         text = re.sub(r'\s+', ' ', text).strip()
         return text
 
-    def analyze_sentiment(self, text: str):
+    @staticmethod
+    def _adjust_gas_fees(text: str, compound: float) -> float:
+        """Inverts sentiment when gas/transaction fees drop or spike using word boundaries."""
+        t = text.lower()
+        has_gas = bool(re.search(r"\b(gas|fees?|gwei)\b", t))
+        if has_gas and re.search(r"\b(low|cheap|drop|dropped|cheaper|reduction)\b", t):
+            return abs(compound)
+        if has_gas and re.search(r"\b(high|spike|spiking|expensive|surge)\b", t):
+            return -abs(compound)
+        return compound
+
+    def analyze_sentiment(self, text: str) -> tuple[float, str]:
         """Returns compound score (-1.0 to 1.0) and sentiment label."""
         cleaned = self.clean_text(text)
         if not cleaned:
             return 0.0, "NEUTRAL"
 
         scores = self.analyzer.polarity_scores(cleaned)
-        compound = scores['compound']
+        compound = self._adjust_gas_fees(cleaned, float(scores['compound']))
 
         if compound >= 0.15:
             label = "BULLISH"

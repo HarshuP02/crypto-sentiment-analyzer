@@ -1,7 +1,8 @@
+import re
 import hashlib
 import feedparser
 from datetime import datetime
-from database import insert_post
+from legacy_db import insert_post
 
 COIN_KEYWORDS = {
     "BTC": ["bitcoin", "btc", "sats"],
@@ -19,12 +20,10 @@ FEEDS = {
     "Reddit_rSolana": "https://www.reddit.com/r/solana/.rss"
 }
 
-
-def detect_coin_tag(text):
-    """Associates text with target cryptocurrency tickers."""
-    text_lower = text.lower()
-    for tag, keywords in COIN_KEYWORDS.items():
-        if any(keyword in text_lower for keyword in keywords):
+def detect_coin_tag(text: str) -> str:
+    t = text.lower()
+    for tag, kws in COIN_KEYWORDS.items():
+        if any(re.search(r"\b" + re.escape(k) + r"\b", t) for k in kws):
             return tag
     return "GENERAL"
 
